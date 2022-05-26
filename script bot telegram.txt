@@ -1,0 +1,188 @@
+// link script google
+// https://script.google.com/d/1E3gfDA9pJOkWiAPZQrn5PwisYo1-1U4ers2342uB6d1YljSfDGFfTgor/edit?usp=sharing
+
+
+
+// masukkan token bot mu di sini
+var token = '5372613320:AAHJNa6n0C68VZFWIDcRckIWSjP_UCLiGBU';
+
+// buat objek baru kita kasih nama tg
+var tg = new telegram.daftar(token);
+
+
+// fungsi buat handle hanya menerima pesan berupa POST, kalau GET keluarkan pesan error
+function doGet(e) {
+  return HtmlService.createHtmlOutput("Hanya data POST yang kita proses yak!");
+}
+
+// fungsi buat handle pesan POST
+function doPost(e) {
+
+  // Memastikan pesan yang diterima hanya dalam format JSON  
+  if(e.postData.type == "application/json") {
+    
+    // Kita parsing data yang masuk
+    var update = JSON.parse(e.postData.contents);
+    
+    // Jika data pesan update valid, kita proses
+    if (update) {
+      prosesPesan(update);
+    }
+  } 
+}
+
+// fungsi utama kita buat handle segala pesan
+function prosesPesan(update) {
+
+    // proses buat handle callback
+      if (update.callback_query) {
+        
+        var cb = update.callback_query;
+        
+        if ( /me_say/i.exec(cb.data) ){
+          let pesan = "Hai teman-teman, selamat belajar!";
+          return tg.request('answerCallbackQuery', { callback_query_id: cb.id, text: pesan });
+        }
+        
+        if ( /me_click/i.exec(cb.data) ){
+          let pesan = "Tombol di click!";
+          return tg.kirimPesan(cb.message.chat.id, pesan, 'HTML');
+        }
+        
+      }
+  
+  // detek klo ada pesan dari user
+  if (update.message) { 
+
+    // penyederhanaan variable
+    var msg = update.message;
+
+    // jika ada pesan berupa text
+    if (msg.text) {
+
+      // jika user ketik /ping, bot akan jawab Pong!
+      if ( /^\/ping$/i.exec(msg.text) ){
+        return tg.kirimPesan(msg.chat.id, '<b>Pong!</b>', 'HTML');
+      }
+
+      // eh ini saya tambahkan lagi, jika user klik start
+      if ( /^\/start$/i.exec(msg.text) ){
+
+        // pesan buat dikirim
+        let pesan = "Halo, saya bot.\n\nSilakan pilih menu keyboard ini ya";
+
+        // buat 1 keyboard, berisi perintah /ping
+        
+           let keyboard = [ 
+            ['/ping', 'ID', '🎲 Dadu'],
+            ['⏰ Time', '👤 About']
+        ]
+    
+        // panggil fungsi sendMsgKeyboard yang dibuat sebelumnya
+        return sendMsgKeyboard(msg.chat.id, pesan, keyboard);
+      }
+      
+      // katika user hai tanpa ada backslah
+      if ( /hai$/i.exec(msg.text) ){
+        return tg.kirimPesan(msg.chat.id, 'hai juga', 'HTML');
+      }
+
+      // kalau nanti mau kembangin sendiri menjadi bot interaktif, code nya taruh disini
+      // atau buatkan fungsi tersendiri saja buat handle nya biar ga bertumpuk panjang
+      // -- mulai custom text --
+       // mengidentifikasi user: ID nya, nama, dan bahasa yang dipergunakan
+    
+    if (/id$/i.exec(msg.text) ){
+      let you = "🔖 ID Kamu: <code>"+msg.from.id+"</code>";
+      
+      //mendefinisikan nama user
+      let nama = msg.from.first_name;
+      // jika punya last name, kita tambahkan juga
+      if (msg.from.last_name) { 
+        nama += " " + msg.from.last_name;
+      }
+      
+      you += "\n\nNama: "+nama;
+      you += "\nBahasa: "+msg.from.language_code;
+      
+      //you += "\n\nID Chat : " + msg.chat.id;
+      
+      you += `\nId Chat : ${msg.chat.id}`;
+      you += `\nType : ${msg.chat.type}`;
+      you += `\nTitle : ${msg.chat.title}`;
+    
+      
+      
+      return tg.kirimPesan(msg.chat.id, you, 'HTML');
+      }
+      
+      if ( /^⏰ time$/i.exec(msg.text) ){
+      let d = new Date(); 
+      let timeStamp = d.getTime();
+      let pesan = "Waktu pesan adalah: <code>";
+      pesan += timeConverter(msg.date, true) + '</code>';
+
+      pesan += "\n\nWaktu BOT sekarang adalah: <code>";
+      pesan += timeConverter(timeStamp) + '</code>';
+  
+      return tg.kirimPesan(msg.chat.id, pesan, 'HTML');
+      }
+      
+      if ( /^👤 About$/i.exec(msg.text) ){
+      let pesan= "🤖 <b>Bot Ceriwis</b>\n\noleh <a href='https://t.me/hasanudinhs'>bangHasan</a>\nRamadhan 1441H / Mei 2020.\nDiskusi via Grup @botIndonesia";
+      
+      let keyboard = 
+          [
+            [ 
+              { "text": "Hai", "callback_data": "me_say" }, 
+              { "text": "Click", "callback_data": "me_click" }
+            ],
+            [
+              { "text": "🌐 Blog", "url": "https://blog.banghasan.com/" }, 
+            ]
+          ];
+      return sendMsgKeyboardInline(msg.chat.id, pesan, keyboard);
+      }
+      
+      if( /^🎲 Dadu/i.exec(msg.text) ){
+        return tg.request("sendDice", {chat_id : msg.chat.id} );
+      }
+      // akhir deteksi pesan text
+    }
+
+    // Nah ini, fungsi handle user yang masuk ke grup
+    // deteksi ada event user baru atau gak:
+    if (msg.new_chat_member) { 
+    
+      //definisikan dulu nama user yang masuk
+      var nama = msg.new_chat_member.first_name;
+      // jika punya last name, kita tambahkan juga
+      if (msg.new_chat_member.last_name) { 
+        nama += " " + msg.new_chat_member.last_name;
+      }
+      
+      const title = msg.chat.title;
+    
+      // Merangkai ucapan selamatnya di variable teks
+      // var teks = "Selamat datang, "+nama+ ". Semoga kamu betah di sini ya!";
+      var teks = `Selamat datang ${nama} di group ${title}, semoga betah yah`;
+    
+      // selanjutnya kirim pesannya ke chat id grup nya
+      // pesan tanpa parse mode HTML / Markdown
+      // tambahkan sendiri jika ingin format text
+      return tg.kirimPesan(msg.chat.id, teks);
+    }
+
+  }
+
+}
+
+// Isi dengan web App URL yang di dapat saat deploy
+var webAppUrl = "https://script.google.com/macros/s/AKfycbwTtJAJK0my1NDn3ncs6ITqFA9Q6QRq-fLZ8VMFwgQTHHpIUrM/exec";
+
+function setWebHook() {
+  var result = tg.request('setWebhook', {
+    url: webAppUrl
+  });
+  Logger.log(result);
+}
